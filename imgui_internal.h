@@ -4055,7 +4055,7 @@ struct ImFontAtlasBuilder
 
     // Cache of all ImFontBaked
     ImStableVector<ImFontBaked,32> BakedPool;
-    ImGuiStorage                BakedMap;
+    ImGuiStorage                BakedMap;               // BakedId --> ImFontBaked*
     int                         BakedDiscardedCount;
 
     // Custom rectangle identifiers
