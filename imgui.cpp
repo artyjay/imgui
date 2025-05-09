@@ -5787,6 +5787,7 @@ static void InitViewportDrawData(ImGuiViewportP* viewport)
     draw_data->DisplaySize = is_minimized ? ImVec2(0.0f, 0.0f) : viewport->Size;
     draw_data->FramebufferScale = (viewport->FramebufferScale.x != 0.0f) ? viewport->FramebufferScale : io.DisplayFramebufferScale;
     draw_data->OwnerViewport = viewport;
+    draw_data->Textures = &ImGui::GetPlatformIO().Textures;
 }
 
 // Push a clipping rectangle for both ImGui logic (hit-testing etc.) and low-level ImDrawList rendering.
