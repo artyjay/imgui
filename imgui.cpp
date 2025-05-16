@@ -4498,6 +4498,8 @@ static void SetCurrentWindow(ImGuiWindow* window)
     g.CurrentTable = window && window->DC.CurrentTableIdx != -1 ? g.Tables.GetByIndex(window->DC.CurrentTableIdx) : NULL;
     if (window)
     {
+        if (g.IO.BackendFlags & ImGuiBackendFlags_RendererHasTextures)
+            g.FontRasterizerDensity = window->Viewport->FramebufferScale.x; // == SetFontRasterizerDensity()
         ImGui::UpdateCurrentFontSize();
         ImGui::NavUpdateCurrentWindowIsScrollPushableX();
     }
@@ -9310,7 +9312,8 @@ void ImGui::UpdateCurrentFontSize()
     g.DrawListSharedData.FontScale = g.FontScale;
 }
 
-// FIXME-DPI: Not sure how to expose this. It may be automatically applied based on current viewport, if we had this information stored in viewport or monitor.
+// Exposed in case user may want to override setting density.
+// IMPORTANT: Begin()/End() is overriding density. Be considerate of this you change it.
 void ImGui::SetFontRasterizerDensity(float rasterizer_density)
 {
     ImGuiContext& g = *GImGui;
@@ -16193,12 +16196,15 @@ static void ImGui::UpdateViewportsNewFrame()
     IM_ASSERT(main_viewport->Window == NULL);
     ImVec2 main_viewport_pos = viewports_enabled ? g.PlatformIO.Platform_GetWindowPos(main_viewport) : ImVec2(0.0f, 0.0f);
     ImVec2 main_viewport_size = g.IO.DisplaySize;
+    ImVec2 main_viewport_fb_scale = g.IO.DisplayFramebufferScale;
     if (viewports_enabled && (main_viewport->Flags & ImGuiViewportFlags_IsMinimized))
     {
         main_viewport_pos = main_viewport->Pos;    // Preserve last pos/size when minimized (FIXME: We don't do the same for Size outside of the viewport path)
         main_viewport_size = main_viewport->Size;
+        main_viewport_fb_scale = main_viewport->FramebufferScale;
     }
     AddUpdateViewport(NULL, IMGUI_VIEWPORT_DEFAULT_ID, main_viewport_pos, main_viewport_size, ImGuiViewportFlags_OwnedByApp | ImGuiViewportFlags_CanHostOtherWindows);
+    main_viewport->FramebufferScale = main_viewport_fb_scale;
 
     g.CurrentDpiScale = 0.0f;
     g.CurrentViewport = NULL;
