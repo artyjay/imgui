@@ -9030,6 +9030,11 @@ ImFont* ImGui::GetFont()
     return GImGui->Font;
 }
 
+ImFontBaked* ImGui::GetFontBaked()
+{
+    return GImGui->FontBaked;
+}
+
 float ImGui::GetFontSize()
 {
     return GImGui->FontSize;
