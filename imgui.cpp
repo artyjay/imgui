@@ -4499,7 +4499,10 @@ static void SetCurrentWindow(ImGuiWindow* window)
     if (window)
     {
         if (g.IO.BackendFlags & ImGuiBackendFlags_RendererHasTextures)
-            g.FontRasterizerDensity = window->Viewport->FramebufferScale.x; // == SetFontRasterizerDensity()
+        {
+            ImGuiViewport* viewport = window->Viewport;
+            g.FontRasterizerDensity = (viewport->FramebufferScale.x != 0.0f) ? viewport->FramebufferScale.x : g.IO.DisplayFramebufferScale.x; // == SetFontRasterizerDensity()
+        }
         ImGui::UpdateCurrentFontSize();
         ImGui::NavUpdateCurrentWindowIsScrollPushableX();
     }
@@ -16240,7 +16243,10 @@ static void ImGui::UpdateViewportsNewFrame()
                 if (viewport->PlatformRequestResize)
                     viewport->Size = viewport->LastPlatformSize = g.PlatformIO.Platform_GetWindowSize(viewport);
                 if (g.PlatformIO.Platform_GetWindowFramebufferScale != NULL)
+                {
                     viewport->FramebufferScale = g.PlatformIO.Platform_GetWindowFramebufferScale(viewport);
+                    IM_ASSERT(viewport->FramebufferScale.x > 0.0f && viewport->FramebufferScale.y > 0.0f);
+                }
             }
         }
 
@@ -16446,7 +16452,16 @@ ImGuiViewportP* ImGui::AddUpdateViewport(ImGuiWindow* window, ImGuiID id, const 
 
         // Store initial DpiScale before the OS platform window creation, based on expected monitor data.
         // This is so we can select an appropriate font size on the first frame of our window lifetime
-        viewport->DpiScale = GetViewportPlatformMonitor(viewport)->DpiScale;
+        const ImGuiPlatformMonitor* monitor = GetViewportPlatformMonitor(viewport);
+        viewport->DpiScale = monitor->DpiScale;
+
+        // FIXME: We cannot obtain an initial value of FramebufferScale with current ImGuiPlatformIO API, but grab one from existing viewports.
+        for (ImGuiViewportP* other_viewport : g.Viewports)
+            if (other_viewport != viewport && other_viewport->PlatformMonitor == viewport->PlatformMonitor)
+            {
+                viewport->FramebufferScale = other_viewport->FramebufferScale;
+                break;
+            }
     }
 
     viewport->Window = window;
