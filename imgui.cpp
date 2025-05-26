@@ -1379,6 +1379,7 @@ static void*                GImAllocatorUserData = NULL;
 
 ImGuiStyle::ImGuiStyle()
 {
+    FontSize                    = 0.0f;             // Will default to io.Fonts->Fonts[0] on first frame.
     Alpha                       = 1.0f;             // Global alpha applies to everything in Dear ImGui.
     DisabledAlpha               = 0.60f;            // Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
     WindowPadding               = ImVec2(8,8);      // Padding within a window
@@ -1441,6 +1442,10 @@ ImGuiStyle::ImGuiStyle()
     HoverFlagsForTooltipMouse   = ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled;    // Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using mouse.
     HoverFlagsForTooltipNav     = ImGuiHoveredFlags_NoSharedDelay | ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_AllowWhenDisabled;  // Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using keyboard/gamepad.
 
+    // [Internal]
+    _ScaleFactor                = 1.0f;
+    _NextFrameFontSize          = 0.0f;
+
     // Default theme
     ImGui::StyleColorsDark(this);
 }
@@ -1449,6 +1454,8 @@ ImGuiStyle::ImGuiStyle()
 // Important: This operation is lossy because we round all sizes to integer. If you need to change your scale multiples, call this over a freshly initialized ImGuiStyle structure rather than scaling multiple times.
 void ImGuiStyle::ScaleAllSizes(float scale_factor)
 {
+    _ScaleFactor *= scale_factor;
+    FontSize = ImTrunc(FontSize * scale_factor);
     WindowPadding = ImTrunc(WindowPadding * scale_factor);
     WindowRounding = ImTrunc(WindowRounding * scale_factor);
     WindowMinSize = ImTrunc(WindowMinSize * scale_factor);
@@ -4503,7 +4510,7 @@ static void SetCurrentWindow(ImGuiWindow* window)
             ImGuiViewport* viewport = window->Viewport;
             g.FontRasterizerDensity = (viewport->FramebufferScale.x != 0.0f) ? viewport->FramebufferScale.x : g.IO.DisplayFramebufferScale.x; // == SetFontRasterizerDensity()
         }
-        ImGui::UpdateCurrentFontSize();
+        ImGui::UpdateCurrentFontSize(0.0f);
         ImGui::NavUpdateCurrentWindowIsScrollPushableX();
     }
 }
@@ -9061,7 +9068,7 @@ void ImGui::SetWindowFontScale(float scale)
     IM_ASSERT(scale > 0.0f);
     ImGuiWindow* window = GetCurrentWindow();
     window->FontWindowScale = scale;
-    UpdateCurrentFontSize();
+    UpdateCurrentFontSize(0.0f);
 }
 
 void ImGui::PushFocusScope(ImGuiID id)
@@ -9230,18 +9237,36 @@ void ImGui::UpdateFontsNewFrame()
         for (ImFontAtlas* atlas : g.FontAtlases)
             atlas->Locked = true;
 
-    // We do this really unusual thing of calling *push_front()*, the reason behind that we want to support the PushFont()/NewFrame()/PopFont() idiom.
-    ImFontStackData font_stack_data = { ImGui::GetDefaultFont(), ImGui::GetDefaultFont()->LegacySize };
-    g.FontStack.push_front(font_stack_data);
-    if (g.FontStack.Size == 1)
-        ImGui::SetCurrentFont(font_stack_data.Font, font_stack_data.FontSize);
+    if (g.Style._NextFrameFontSize != 0.0f)
+    {
+        g.Style.FontSize = g.Style._NextFrameFontSize;
+        g.Style._NextFrameFontSize = 0.0f;
+    }
 
+    ImFont* font = ImGui::GetDefaultFont();
+    if (g.Style.FontSize <= 0.0f)
+        g.Style.FontSize = font->LegacySize * g.Style._ScaleFactor;
+    g.Font = font;
+    g.FontSizeBeforeScaling = g.Style.FontSize;
+    g.FontSize = 0.0f;
+    ImFontStackData font_stack_data = { font, g.Style.FontSize, g.Style.FontSize };           // <--- Will restore FontSize
+    SetCurrentFont(font_stack_data.Font, font_stack_data.FontSizeBeforeScaling, 0.0f); // <--- but use 0.0f to enable scale
+    g.FontStack.push_back(font_stack_data);
     IM_ASSERT(g.Font->IsLoaded());
 }
 
 void ImGui::UpdateFontsEndFrame()
 {
     PopFont();
+}
+
+ImFont* ImGui::GetDefaultFont()
+{
+    ImGuiContext& g = *GImGui;
+    ImFontAtlas* atlas = g.IO.Fonts;
+    if (atlas->Builder == NULL)
+        ImFontAtlasBuildMain(atlas);
+    return g.IO.FontDefault ? g.IO.FontDefault : atlas->Fonts[0];
 }
 
 void ImGui::RegisterUserTexture(ImTextureData* tex)
@@ -9284,12 +9309,12 @@ void ImGui::UnregisterFontAtlas(ImFontAtlas* atlas)
 //     the same way AddImage() does, but then all other primitives would also need to? I don't think we should tackle this problem
 //     because we have a concrete need and a test bed for multiple atlas textures.
 // FIXME-NEWATLAS-V2: perhaps we can now leverage ImFontAtlasUpdateDrawListsTextures() ?
-void ImGui::SetCurrentFont(ImFont* font, float font_size)
+void ImGui::SetCurrentFont(ImFont* font, float font_size_before_scaling, float font_size_after_scaling)
 {
     ImGuiContext& g = *GImGui;
     g.Font = font;
-    g.FontSizeBeforeScaling = font_size;
-    UpdateCurrentFontSize();
+    g.FontSizeBeforeScaling = font_size_before_scaling;
+    UpdateCurrentFontSize(font_size_after_scaling);
 
     if (font != NULL)
     {
@@ -9304,20 +9329,27 @@ void ImGui::SetCurrentFont(ImFont* font, float font_size)
     }
 }
 
-void ImGui::UpdateCurrentFontSize()
+void ImGui::UpdateCurrentFontSize(float restore_font_size_after_scaling)
 {
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
+
+    g.Style.FontSize = g.FontSizeBeforeScaling;
     if (window != NULL && window->SkipItems)
         return;
 
-    float final_size = g.FontSizeBeforeScaling * g.IO.FontGlobalScale;
+    // Restoring is pretty much only used by PopFont()/PopFontSize()
+    float final_size = (restore_font_size_after_scaling > 0.0f) ? restore_font_size_after_scaling : 0.0f;
+    if (final_size == 0.0f)
+    {
+        final_size = g.FontSizeBeforeScaling * g.IO.FontGlobalScale;
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
-    if (g.Font != NULL)
-        final_size *= g.Font->Scale;
+        if (g.Font != NULL)
+          final_size *= g.Font->Scale;
 #endif
-    if (window != NULL)
-        final_size *= window->FontWindowScale * window->FontDpiScale;
+        if (window != NULL)
+            final_size *= window->FontWindowScale * window->FontDpiScale;
+    }
 
     // Round font size
     // - We started rounding in 1.90 WIP (18991) as our layout system currently doesn't support non-rounded font size well yet.
@@ -9342,12 +9374,16 @@ void ImGui::SetFontRasterizerDensity(float rasterizer_density)
     if (g.FontRasterizerDensity == rasterizer_density)
         return;
     g.FontRasterizerDensity = rasterizer_density;
-    UpdateCurrentFontSize();
+    UpdateCurrentFontSize(0.0f);
 }
 
+// If you want to scale an existing font size:
+// - Use e.g. PushFontSize(style.FontSize * factor) (= value before external scale factors applied).
+// - Do NOT use PushFontSize9GetFontSize() * factor) (= value after external scale factors applied).
 void ImGui::PushFont(ImFont* font, float font_size)
 {
     ImGuiContext& g = *GImGui;
+    g.FontStack.push_back({ g.Font, g.FontSizeBeforeScaling, g.FontSize });
     if (font == NULL)
         font = GetDefaultFont();
     if (font_size <= 0.0f)
@@ -9357,23 +9393,20 @@ void ImGui::PushFont(ImFont* font, float font_size)
         else
             font_size = g.FontSizeBeforeScaling; // Keep current font size
     }
-    g.FontStack.push_back({ font, font_size });
-    SetCurrentFont(font, font_size);
+    SetCurrentFont(font, font_size, 0.0f);
 }
 
 void  ImGui::PopFont()
 {
     ImGuiContext& g = *GImGui;
-    if (g.FontStack.Size <= 1 && g.WithinFrameScope)
+    if (g.FontStack.Size <= 0 && g.WithinFrameScope)
     {
         IM_ASSERT_USER_ERROR(0, "Calling PopFont() too many times!");
         return;
     }
+    ImFontStackData* font_stack_data = &g.FontStack.back();
+    SetCurrentFont(font_stack_data->Font, font_stack_data->FontSizeBeforeScaling, font_stack_data->FontSizeAfterScaling);
     g.FontStack.pop_back();
-    if (ImFontStackData* font_stack_data = (g.FontStack.Size > 0) ? &g.FontStack.back() : NULL)
-        SetCurrentFont(font_stack_data->Font, font_stack_data->FontSize);
-    else
-        SetCurrentFont(NULL, 0.0f);
 }
 
 void    ImGui::PushFontSize(float font_size)
@@ -21414,6 +21447,7 @@ void ImGui::ShowFontAtlas(ImFontAtlas* atlas)
 {
     ImGuiContext& g = *GImGui;
     ImGuiIO& io = g.IO;
+    ImGuiStyle& style = g.Style;
 
     Text("Read "); SameLine(0, 0);
     TextLinkOpenURL("https://www.dearimgui.com/faq/"); SameLine(0, 0);
@@ -21425,11 +21459,15 @@ void ImGui::ShowFontAtlas(ImFontAtlas* atlas)
     EndDisabled();
 
     BeginDisabled((io.BackendFlags & ImGuiBackendFlags_RendererHasTextures) == 0);
-    SetNextItemWidth(GetFontSize() * 5);
-    DragFloat("io.FontGlobalScale", &io.FontGlobalScale, 0.05f, 0.5f, 5.0f);
-    BulletText("This is scaling font only. General scaling will come later.");
-    BulletText("Load an actual font that's not the default for best result!");
-    BulletText("Please submit feedback:"); SameLine(); TextLinkOpenURL("https://github.com/ocornut/imgui/issues/8465");
+    SetNextItemWidth(GetFontSize() * 10);
+    if (DragFloat("FontSize", &style.FontSize, 0.20f, 4.0f, 100.0f, "%.0f"))
+        style._NextFrameFontSize = style.FontSize; // FIXME: Temporary hack until we finish remaining work.
+    SameLine(); MetricsHelpMarker("- This is scaling font only. General scaling will come later.");
+    SetNextItemWidth(GetFontSize() * 10);
+    DragFloat("io.FontGlobalScale", &io.FontGlobalScale, 0.05f, 0.5f, 5.0f); // <-- This works, but no need to make it too visible.
+    BulletText("Load a nice font for better results!");
+    BulletText("Please submit feedback:");
+    SameLine(); TextLinkOpenURL("#8465", "https://github.com/ocornut/imgui/issues/8465");
     EndDisabled();
 
     SeparatorText("Fonts");
@@ -21449,7 +21487,7 @@ void ImGui::ShowFontAtlas(ImFontAtlas* atlas)
 #else
         BeginDisabled();
         RadioButton("stb_truetype", false);
-        SetItemTooltip("Requires IMGUI_ENABLE_STB_TRUETYPE");
+        SetItemTooltip("Requires #define IMGUI_ENABLE_STB_TRUETYPE");
         EndDisabled();
 #endif
         SameLine();
@@ -21473,7 +21511,7 @@ void ImGui::ShowFontAtlas(ImFontAtlas* atlas)
 #else
         BeginDisabled();
         RadioButton("FreeType", false);
-        SetItemTooltip("Requires IMGUI_ENABLE_FREETYPE + imgui_freetype.cpp.");
+        SetItemTooltip("Requires #define IMGUI_ENABLE_FREETYPE + imgui_freetype.cpp.");
         EndDisabled();
 #endif
         EndDisabled();

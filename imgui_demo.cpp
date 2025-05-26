@@ -436,16 +436,24 @@ void ImGui::ShowDemoWindow(bool* p_open)
     ImGui::Text("dear imgui says hello! (%s) (%d)", IMGUI_VERSION, IMGUI_VERSION_NUM);
     ImGui::Spacing();
 
-    ImGui::SeparatorText("dynamic_fonts branch");
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 5);
-    ImGui::DragFloat("io.FontGlobalScale", &ImGui::GetIO().FontGlobalScale, 0.05f, 0.5f, 5.0f);
-    ImGui::BulletText("This is scaling font only. General scaling will come later.");
-    ImGui::BulletText("Load an actual font that's not the default for best result!");
-    ImGui::BulletText("See 'Widgets->Fonts' below for more..");
-    ImGui::BulletText("Current font loader: '%s'", ImGui::GetIO().Fonts->FontLoaderName);
-    ImGui::BulletText("Please submit feedback:"); ImGui::SameLine();
-    ImGui::TextLinkOpenURL("https://github.com/ocornut/imgui/issues/8465");
-    ImGui::Spacing();
+    {
+        ImGui::SeparatorText("dynamic_fonts branch");
+        ImGuiStyle& style = ImGui::GetStyle();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
+        ImGui::ShowFontSelector("Font");
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
+        if (ImGui::DragFloat("FontSize", &style.FontSize, 0.20f, 4.0f, 100.0f, "%.0f"))
+            style._NextFrameFontSize = style.FontSize; // FIXME: Temporary hack until we finish remaining work.
+        ImGui::SameLine(); HelpMarker("- This is scaling font only. General scaling will come later.");
+        //ImGui::SetNextItemWidth(ImGui::GetFontSize() * 20);
+        //ImGui::DragFloat("FontGlobalScale", &ImGui::GetIO().FontGlobalScale, 0.05f, 0.5f, 5.0f);
+        ImGui::BulletText("Load a nice font for better results!");
+        ImGui::BulletText("See 'Widgets->Fonts' below for more.");
+        //ImGui::BulletText("Current font loader: '%s'", ImGui::GetIO().Fonts->FontLoaderName);
+        ImGui::BulletText("Please submit feedback:"); ImGui::SameLine();
+        ImGui::TextLinkOpenURL("#8465", "https://github.com/ocornut/imgui/issues/8465");
+        ImGui::Spacing();
+    }
 
     IMGUI_DEMO_MARKER("Help");
     if (ImGui::CollapsingHeader("Help"))
@@ -8284,11 +8292,20 @@ void ImGui::ShowFontSelector(const char* label)
         ImGui::EndCombo();
     }
     ImGui::SameLine();
-    HelpMarker(
-        "- Load additional fonts with io.Fonts->AddFontFromFileTTF().\n"
-        "- The font atlas is built when calling io.Fonts->GetTexDataAsXXXX() or io.Fonts->Build().\n"
-        "- Read FAQ and docs/FONTS.md for more details.\n"
-        "- If you need to add/remove fonts at runtime (e.g. for DPI change), do it before calling NewFrame().");
+    if (io.BackendFlags & ImGuiBackendFlags_RendererHasTextures)
+    {
+        HelpMarker(
+            "- Load additional fonts with io.Fonts->AddFontXXX() functions.\n"
+            "- Read FAQ and docs/FONTS.md for more details.");
+    }
+    else
+    {
+        HelpMarker(
+            "- Load additional fonts with io.Fonts->AddFontXXX() functions.\n"
+            "- The font atlas is built when calling io.Fonts->GetTexDataAsXXXX() or io.Fonts->Build().\n"
+            "- Read FAQ and docs/FONTS.md for more details.\n"
+            "- If you need to add/remove fonts at runtime (e.g. for DPI change), do it before calling NewFrame().");
+    }
 }
 
 // Demo helper function to select among default colors. See ShowStyleEditor() for more advanced options.
@@ -8366,6 +8383,11 @@ void ImGui::ShowStyleEditor(ImGuiStyle* ref)
     {
         if (ImGui::BeginTabItem("Sizes"))
         {
+            ImGui::SeparatorText("Fonts");
+            if (ImGui::DragFloat("FontSize", &style.FontSize, 0.20f, 4.0f, 100.0f, "%.0f"))
+                style._NextFrameFontSize = style.FontSize; // FIXME: Temporary hack until we finish remaining work.
+            ImGui::SameLine(); HelpMarker("See \"Fonts\" section for more.");
+
             ImGui::SeparatorText("Main");
             ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
             ImGui::SliderFloat2("FramePadding", (float*)&style.FramePadding, 0.0f, 20.0f, "%.0f");

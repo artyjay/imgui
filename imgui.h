@@ -506,8 +506,13 @@ namespace ImGui
     // *IMPORTANT* before 1.92, fonts had a single size. They can now be dynamically be adjusted.
     // - Before 1.92: PushFont() always used font default size.
     // -  Since 1.92: PushFont() preserve the current shared font size.
-    // - To use old behavior (single size font): use 'PushFont(font, font->LegacySize)' in call site, or set 'ImFontConfig::Flags |= ImFontFlags_DefaultToLegacySize' before calling AddFont().
-    IMGUI_API void          PushFont(ImFont* font, float font_size = -1);                   // use NULL as a shortcut to push default font. Use <0.0f to keep current font size. Use font->LegacySize to revert to font size specified by AddFont().
+    // - To use old behavior (single size font, size specified in AddFontXXX() call:
+    //   - Use 'PushFont(font, font->LegacySize)' at call site
+    //   - Or set 'ImFontConfig::Flags |= ImFontFlags_DefaultToLegacySize' before calling AddFont().
+    // - If you want to scale an existing font size:
+    //   - Use e.g. PushFontSize(style.FontSize * factor) (= value before external scale factors applied).
+    //   - Do NOT use PushFontSize9GetFontSize() * factor) (= value after external scale factors applied).
+    IMGUI_API void          PushFont(ImFont* font, float font_size = -1);                   // use NULL as a shortcut to push default font. Use <0.0f to keep current font size.
     IMGUI_API void          PopFont();
     IMGUI_API void          PushFontSize(float font_size);
     IMGUI_API void          PopFontSize();
@@ -2299,6 +2304,8 @@ IM_MSVC_RUNTIME_CHECKS_RESTORE
 
 struct ImGuiStyle
 {
+    float       FontSize;                   // Current base font size (before scaling applied). Use PushFont()/PushFontSize() to modify. Use ImGui::GetFontSize() to obtain scaled value.
+
     float       Alpha;                      // Global alpha applies to everything in Dear ImGui.
     float       DisabledAlpha;              // Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
     ImVec2      WindowPadding;              // Padding within a window.
@@ -2365,8 +2372,13 @@ struct ImGuiStyle
     ImGuiHoveredFlags HoverFlagsForTooltipMouse;// Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using mouse.
     ImGuiHoveredFlags HoverFlagsForTooltipNav;  // Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using keyboard/gamepad.
 
-    IMGUI_API ImGuiStyle();
-    IMGUI_API void ScaleAllSizes(float scale_factor);
+    // [Internal]
+    float       _ScaleFactor;
+    float       _NextFrameFontSize;         // FIXME: Temporary hack until we finish remaining work.
+
+    // Functions
+    IMGUI_API   ImGuiStyle();
+    IMGUI_API   void ScaleAllSizes(float scale_factor);
 
     // Obsolete names
 #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
