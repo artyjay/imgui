@@ -1215,6 +1215,9 @@ CODE
 #define IMGUI_DEBUG_NAV_SCORING     0   // Display navigation scoring preview when hovering items. Hold CTRL to display for all candidates. CTRL+Arrow to change last direction.
 #define IMGUI_DEBUG_NAV_RECTS       0   // Display the reference navigation rectangle for each window
 
+// Default font size if unspecified in both style.FontSize and AddFontXXX() calls.
+static const float FONT_DEFAULT_SIZE = 20.0f;
+
 // When using CTRL+TAB (or Gamepad Square+L/R) we delay the visual a little in order to reduce visual noise doing a fast switch.
 static const float NAV_WINDOWING_HIGHLIGHT_DELAY            = 0.20f;    // Time before the highlight and screen dimming starts fading in
 static const float NAV_WINDOWING_LIST_APPEAR_DELAY          = 0.15f;    // Time before the window list starts to appear
@@ -9243,9 +9246,12 @@ void ImGui::UpdateFontsNewFrame()
         g.Style._NextFrameFontSize = 0.0f;
     }
 
+    // Default font size
     ImFont* font = ImGui::GetDefaultFont();
     if (g.Style.FontSize <= 0.0f)
-        g.Style.FontSize = font->LegacySize * g.Style._ScaleFactor;
+        g.Style.FontSize = (font->LegacySize > 0.0f ? font->LegacySize : FONT_DEFAULT_SIZE) * g.Style._ScaleFactor;
+
+    // Set initial font
     g.Font = font;
     g.FontSizeBeforeScaling = g.Style.FontSize;
     g.FontSize = 0.0f;
