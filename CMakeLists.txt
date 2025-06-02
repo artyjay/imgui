@@ -7,18 +7,11 @@
 
 add_library(imgui STATIC)
 
-set_target_properties(imgui
-	PROPERTIES
-		OUTPUT_NAME     "imgui-$<LOWER_CASE:${BUILD_ARCH_NAME}>-$<LOWER_CASE:$<CONFIG>>"
-		LINKER_LANGUAGE CXX
-		FOLDER          "Dependencies"
-)
-
 # Source
 include(CMakeSources.cmake)
 
 target_sources(imgui
-	PRIVATE 
+	PRIVATE
 		${SRC_BUILD_CONFIG}
 		${SRC_MAIN}
 )
