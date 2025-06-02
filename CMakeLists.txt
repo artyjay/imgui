@@ -46,9 +46,9 @@ endif()
 
 # Include
 target_include_directories(imgui
-PUBLIC   ./include
-		 ./backends/
-		 ./misc/cpp/
+PUBLIC  "."
+		"backends"
+		"misc/cpp"
 )
 
 # Dependencies - note: These are extenally defined targets.
