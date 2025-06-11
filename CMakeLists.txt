@@ -30,6 +30,12 @@ if(IMGUI_WITH_SDL3_GPU)
 	)
 endif()
 
+if(IMGUI_WITH_OPENGL3)
+	target_sources(imgui
+		PRIVATE ${SRC_OPENGL3_BACKEND}
+	)
+endif()
+
 if(IMGUI_WITH_NATVIS)
 	target_sources(imgui
 		PRIVATE ${SRC_NATVIS}
@@ -45,7 +51,7 @@ PUBLIC  "."
 )
 
 # Dependencies - note: These are extenally defined targets.
-if(IMG_WITH_SDL3 OR IMGUI_WITH_SDL3_GPU)
+if(IMGUI_WITH_SDL3 OR IMGUI_WITH_SDL3_GPU)
 	# Note: Assumes there is a target named 'dependency::sdl' that links to SDL3
 	target_link_libraries(imgui PUBLIC dependency::sdl3)
 endif()

@@ -37,6 +37,11 @@ set(SRC_SDL3_GPU_BACKEND
 	"backends/imgui_impl_sdlgpu3.cpp"
 )
 
+set(SRC_OPENGL3_BACKEND
+	"backends/imgui_impl_opengl3.cpp"
+	"backends/imgui_impl_opengl3.h"
+)
+
 set(SRC_NATVIS
 	"misc/debuggers/imgui.natvis"
 )
@@ -45,4 +50,4 @@ set(SRC_NATVIS
 # Group sources for IDE
 #-------------------------------------------------------------------------------
 source_group("build" FILES ${SRC_BUILD_CONFIG})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC_MAIN} ${SRC_SDL3_BACKEND} ${SRC_SDL3_GPU_BACKEND} ${SRC_NATVIS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC_MAIN} ${SRC_SDL3_BACKEND} ${SRC_SDL3_GPU_BACKEND} ${SRC_SDL3_OPENGL_BACKEND} ${SRC_NATVIS})
