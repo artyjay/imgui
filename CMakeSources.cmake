@@ -37,6 +37,11 @@ set(SRC_SDL3_GPU_BACKEND
 	"backends/imgui_impl_sdlgpu3.cpp"
 )
 
+set(SRC_SDL3_RENDERER_BACKEND
+	"backends/imgui_impl_sdlrenderer3.h"
+	"backends/imgui_impl_sdlrenderer3.cpp"
+)
+
 set(SRC_OPENGL3_BACKEND
 	"backends/imgui_impl_opengl3.cpp"
 	"backends/imgui_impl_opengl3.h"

@@ -30,6 +30,12 @@ if(IMGUI_WITH_SDL3_GPU)
 	)
 endif()
 
+if(IMGUI_WITH_SDL3_RENDERER)
+	target_sources(imgui
+		PRIVATE ${SRC_SDL3_RENDERER_BACKEND}
+	)
+endif()
+
 if(IMGUI_WITH_OPENGL3)
 	target_sources(imgui
 		PRIVATE ${SRC_OPENGL3_BACKEND}
