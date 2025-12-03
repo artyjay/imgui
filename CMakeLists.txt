@@ -42,6 +42,18 @@ if(IMGUI_WITH_OPENGL3)
 	)
 endif()
 
+if(IMGUI_WITH_GLFW)
+	target_sources(imgui
+		PRIVATE ${SRC_GLFW_BACKEND}
+	)
+endif()
+
+if(IMGUI_WITH_VULKAN)
+	target_sources(imgui
+		PRIVATE ${SRC_VULKANN_BACKEND}
+	)
+endif()
+
 if(IMGUI_WITH_NATVIS)
 	target_sources(imgui
 		PRIVATE ${SRC_NATVIS}
@@ -60,6 +72,10 @@ PUBLIC  "."
 if(IMGUI_WITH_SDL3 OR IMGUI_WITH_SDL3_GPU)
 	# Note: Assumes there is a target named 'dependency::sdl' that links to SDL3
 	target_link_libraries(imgui PUBLIC dependency::sdl3)
+endif()
+
+if(IMGUI_WITH_GLFW)
+	target_link_libraries(imgui PUBLIC dependency::glfw)
 endif()
 
 # Export the target in dependency namespace as a convention.

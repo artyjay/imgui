@@ -47,6 +47,16 @@ set(SRC_OPENGL3_BACKEND
 	"backends/imgui_impl_opengl3.h"
 )
 
+set(SRC_GLFW_BACKEND
+	"backends/imgui_impl_glfw.h"
+	"backends/imgui_impl_glfw.cpp"
+)
+
+set(SRC_VULKAN_BACKEND
+	"backends/imgui_impl_vulkan.h"
+	"backends/imgui_impl_vulkan.cpp"
+)
+
 set(SRC_NATVIS
 	"misc/debuggers/imgui.natvis"
 )
