@@ -78,6 +78,10 @@ if(IMGUI_WITH_GLFW)
 	target_link_libraries(imgui PUBLIC dependency::glfw)
 endif()
 
+if(IMGUI_WITH_VULKAN)
+    target_link_libraries(imgui PUBLIC dependency::vulkan)
+endif()
+
 # Export the target in dependency namespace as a convention.
 add_library(dependency::imgui ALIAS imgui)
 
