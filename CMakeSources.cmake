@@ -21,6 +21,7 @@ set(SRC_MAIN
 	"imgui_demo.cpp"
 	"imgui_draw.cpp"
 	"imgui_tables.cpp"
+    "imgui_threaded_rendering.h"
 	"imgui_widgets.cpp"
 	"misc/cpp/imgui_stdlib.h"
 	"misc/cpp/imgui_stdlib.cpp"
