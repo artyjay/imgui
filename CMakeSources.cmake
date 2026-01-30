@@ -23,6 +23,10 @@ set(SRC_MAIN
 	"imgui_tables.cpp"
     "imgui_threaded_rendering.h"
 	"imgui_widgets.cpp"
+	"implot.cpp"
+	"implot.h"
+	"implot_internal.h"
+	"implot_items.cpp"
 	"misc/cpp/imgui_stdlib.h"
 	"misc/cpp/imgui_stdlib.cpp"
 )
